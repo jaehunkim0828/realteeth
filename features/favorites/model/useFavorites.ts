@@ -1,9 +1,9 @@
 'use client';
 
-import type { FavoritePlace } from '@/entities/favorite/model/types';
-import type { DistrictEntry } from '@/entities/district/lib/koreaDistricts';
 import { geocodeDistrict } from '@/entities/district/api/geocodeDistrict';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { DistrictEntry } from '@/entities/district/lib/koreaDistricts';
+import type { FavoritePlace } from '@/entities/favorite/model/types';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'realteeth:favorites:v1';
 const MAX_FAVORITES = 6;
@@ -38,17 +38,30 @@ function save(list: FavoritePlace[]) {
 
 export function useFavorites() {
   const [items, setItems] = useState<FavoritePlace[]>([]);
-  const hydratedRef = useRef(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setItems(safeParse(localStorage.getItem(STORAGE_KEY)));
-    hydratedRef.current = true;
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
-    if (!hydratedRef.current) return;
+    if (!hydrated) return;
     save(items);
-  }, [items]);
+  }, [items, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    function onStorage(event: StorageEvent) {
+      if (event.storageArea !== window.localStorage) return;
+      if (event.key !== STORAGE_KEY) return;
+      setItems(safeParse(event.newValue));
+    }
+
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [hydrated]);
 
   const count = items.length;
   const canAdd = count < MAX_FAVORITES;
@@ -83,7 +96,9 @@ export function useFavorites() {
         throw new Error('이미 즐겨찾기에 추가된 장소입니다.');
       }
       if (items.length >= MAX_FAVORITES) {
-        throw new Error(`즐겨찾기는 최대 ${MAX_FAVORITES}개까지 추가할 수 있습니다.`);
+        throw new Error(
+          `즐겨찾기는 최대 ${MAX_FAVORITES}개까지 추가할 수 있습니다.`
+        );
       }
 
       const coords = await geocodeDistrict(entry);
@@ -105,6 +120,7 @@ export function useFavorites() {
   );
 
   return {
+    hydrated,
     items,
     byId,
     count,

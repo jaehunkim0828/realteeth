@@ -107,6 +107,7 @@ export function WeatherDashboard() {
                     <button
                       type='button'
                       disabled={
+                        !favorites.hydrated ||
                         !selectedDistrict ||
                         !favorites.canAdd ||
                         favorites.isFavorite(selectedDistrict)
@@ -245,7 +246,10 @@ export function WeatherDashboard() {
                 즐겨찾기
               </div>
               <span className='text-xs font-medium text-slate-500'>
-                {favorites.count} / 6
+                <span suppressHydrationWarning>
+                  {favorites.hydrated ? favorites.count : '—'}
+                </span>{' '}
+                / 6
               </span>
             </div>
 
