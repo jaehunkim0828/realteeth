@@ -8,6 +8,45 @@ import { useCurrentLocationWeather } from '@/features/weather/current-location/m
 import { LocationPinIcon, StarIcon } from '@/shared/ui/icon';
 import { useState } from 'react';
 
+function formatHour(hhmm: string) {
+  const hh = hhmm.slice(0, 2);
+  return `${hh}시`;
+}
+
+function HourlyTemperatureRow({
+  hourly,
+}: {
+  hourly: Array<{ time: string; temperatureC: number }>;
+}) {
+  const trimmed = hourly.slice(0, 12);
+  if (trimmed.length === 0) return null;
+
+  return (
+    <div className='mt-4'>
+      <div className='text-xs font-semibold tracking-wide text-slate-500'>
+        시간대별 기온
+      </div>
+      <div className='mt-2 overflow-x-auto'>
+        <div className='flex min-w-max gap-2'>
+          {trimmed.map(item => (
+            <div
+              key={item.time}
+              className='w-16 shrink-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center shadow-sm'
+            >
+              <div className='text-xs text-slate-600'>
+                {formatHour(item.time)}
+              </div>
+              <div className='mt-1 text-sm font-semibold text-slate-900'>
+                {item.temperatureC}°
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function WeatherDashboard() {
   const [selectedDistrict, setSelectedDistrict] =
     useState<DistrictEntry | null>(null);
@@ -54,29 +93,38 @@ export function WeatherDashboard() {
               ) : selected.error ? (
                 <p className='text-sm text-rose-600'>{selected.error}</p>
               ) : selected.weather ? (
-                <div className='grid gap-4 sm:grid-cols-2'>
-                  <div>
-                    <div className='text-4xl font-semibold tracking-tight text-slate-900'>
-                      {selected.weather.now.temperatureC ?? '-'}°
+                <div>
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <div>
+                      <div className='text-4xl font-semibold tracking-tight text-slate-900'>
+                        {selected.weather.now.temperatureC ?? '-'}°
+                      </div>
+                      <div className='mt-1 text-sm text-slate-600'>
+                        최저 {selected.weather.today.minC ?? '-'}° · 최고{' '}
+                        {selected.weather.today.maxC ?? '-'}°
+                      </div>
+                      <div className='mt-1 text-sm text-slate-600'>
+                        습도 {selected.weather.now.humidity ?? '-'}% · 풍속
+                        {selected.weather.now.windSpeed ?? '-'}m/s
+                      </div>
                     </div>
-                    <div className='mt-1 text-sm text-slate-600'>
-                      습도 {selected.weather.now.humidity ?? '-'}% · 풍속
-                      {selected.weather.now.windSpeed ?? '-'}m/s
+
+                    <div className='text-sm text-slate-700'>
+                      <div>
+                        강수{' '}
+                        {formatPrecipitationType(
+                          selected.weather.now.precipitationType
+                        )}{' '}
+                        · 1시간 {selected.weather.now.precipitation1h ?? '-'}mm
+                      </div>
+                      <div className='mt-1 text-xs text-slate-500'>
+                        기준 {selected.weather.base.date}.
+                        {selected.weather.base.time}
+                      </div>
                     </div>
                   </div>
 
-                  <div className='text-sm text-slate-700'>
-                    <div>
-                      강수{' '}
-                      {formatPrecipitationType(
-                        selected.weather.now.precipitationType
-                      )}{' '}
-                      · 1시간 {selected.weather.now.precipitation1h ?? '-'}mm
-                    </div>
-                    <div className='mt-1 text-xs text-slate-500'>
-                      기준 {selected.weather.base.date}.{selected.weather.base.time}
-                    </div>
-                  </div>
+                  <HourlyTemperatureRow hourly={selected.weather.hourly} />
                 </div>
               ) : (
                 <p className='text-sm text-slate-600'>
@@ -105,29 +153,37 @@ export function WeatherDashboard() {
               ) : current.error ? (
                 <p className='text-sm text-rose-600'>{current.error}</p>
               ) : current.weather ? (
-                <div className='grid gap-4 sm:grid-cols-2'>
-                  <div>
-                    <div className='text-4xl font-semibold tracking-tight text-slate-900'>
-                      {current.weather.now.temperatureC ?? '-'}°
+                <div>
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <div>
+                      <div className='text-4xl font-semibold tracking-tight text-slate-900'>
+                        {current.weather.now.temperatureC ?? '-'}°
+                      </div>
+                      <div className='mt-1 text-sm text-slate-600'>
+                        최저 {current.weather.today.minC ?? '-'}° · 최고{' '}
+                        {current.weather.today.maxC ?? '-'}°
+                      </div>
+                      <div className='mt-1 text-sm text-slate-600'>
+                        습도 {current.weather.now.humidity ?? '-'}% · 풍속
+                        {current.weather.now.windSpeed ?? '-'}m/s
+                      </div>
                     </div>
-                    <div className='mt-1 text-sm text-slate-600'>
-                      습도 {current.weather.now.humidity ?? '-'}% · 풍속
-                      {current.weather.now.windSpeed ?? '-'}m/s
+
+                    <div className='text-sm text-slate-700'>
+                      <div>
+                        강수{' '}
+                        {formatPrecipitationType(
+                          current.weather.now.precipitationType
+                        )}{' '}
+                        · 1시간 {current.weather.now.precipitation1h ?? '-'}mm
+                      </div>
+                      <div className='mt-1 text-xs text-slate-500'>
+                        기준 {current.weather.base.date}.{current.weather.base.time}
+                      </div>
                     </div>
                   </div>
 
-                  <div className='text-sm text-slate-700'>
-                    <div>
-                      강수{' '}
-                      {formatPrecipitationType(
-                        current.weather.now.precipitationType
-                      )}{' '}
-                      · 1시간 {current.weather.now.precipitation1h ?? '-'}mm
-                    </div>
-                    <div className='mt-1 text-xs text-slate-500'>
-                      기준 {current.weather.base.date}.{current.weather.base.time}
-                    </div>
-                  </div>
+                  <HourlyTemperatureRow hourly={current.weather.hourly} />
                 </div>
               ) : (
                 <p className='text-sm text-slate-600'>
