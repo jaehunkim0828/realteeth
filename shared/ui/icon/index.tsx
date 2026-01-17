@@ -71,4 +71,3 @@ export function StarIcon(props: IconProps) {
     </svg>
   );
 }
-

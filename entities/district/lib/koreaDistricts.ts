@@ -48,4 +48,3 @@ export function searchDistricts(
 
   return [...startsWith, ...includes].slice(0, limit);
 }
-
