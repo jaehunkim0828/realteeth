@@ -1,55 +1,77 @@
-'use client';
+"use client";
 
-import { getWeatherByCoords } from '@/entities/weather/api/getWeatherByCoords';
-import type { WeatherOkResponse } from '@/entities/weather/model/types';
-import { useCallback, useEffect, useState } from 'react';
+import { getWeatherByCoords } from "@/entities/weather/api/getWeatherByCoords";
+import type { WeatherOkResponse } from "@/entities/weather/model/types";
+import {
+  weatherQueryRefetchIntervalMs,
+  weatherQueryStaleTimeMs,
+} from "@/entities/weather/api/queryOptions";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useState } from "react";
 
 export function useCurrentLocationWeather() {
   const [weather, setWeather] = useState<WeatherOkResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(
+    null,
+  );
+  const [geolocationError, setGeolocationError] = useState<string | null>(null);
 
   const request = useCallback(() => {
     if (!navigator.geolocation) {
-      setError('이 브라우저에서는 위치 기능을 사용할 수 없습니다.');
+      setGeolocationError("이 브라우저에서는 위치 기능을 사용할 수 없습니다.");
       return;
     }
 
-    setError(null);
-    setLoading(true);
+    setGeolocationError(null);
 
     navigator.geolocation.getCurrentPosition(
-      async position => {
-        try {
-          const result = await getWeatherByCoords({
-            lat: position.coords.latitude,
-            lon: position.coords.longitude,
-          });
-          setWeather(result);
-        } catch (fetchError) {
-          setWeather(null);
-          setError(
-            fetchError instanceof Error
-              ? fetchError.message
-              : '날씨 정보를 불러오지 못했습니다.'
-          );
-        } finally {
-          setLoading(false);
-        }
+      (position) => {
+        setCoords({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        });
       },
-      geolocationError => {
+      (geolocationError) => {
         setWeather(null);
-        setError(geolocationError.message || '위치 권한이 필요합니다.');
-        setLoading(false);
+        setGeolocationError(
+          geolocationError.message || "위치 권한이 필요합니다.",
+        );
       },
-      { enableHighAccuracy: false, timeout: 10_000 }
+      { enableHighAccuracy: false, timeout: 10_000 },
     );
   }, []);
+
+  const query = useQuery({
+    queryKey: coords
+      ? ["weather", "coords", coords.lat, coords.lon]
+      : ["weather", "coords", "none"],
+    queryFn: async () => {
+      if (!coords) throw new Error("coords not ready");
+      return getWeatherByCoords(coords);
+    },
+    enabled: !!coords,
+    staleTime: weatherQueryStaleTimeMs,
+    refetchInterval: weatherQueryRefetchIntervalMs,
+    refetchIntervalInBackground: true,
+    gcTime: 1000 * 60 * 60 * 2,
+  });
 
   useEffect(() => {
     request();
   }, [request]);
 
-  return { weather, loading, error, request };
-}
+  useEffect(() => {
+    if (query.data) setWeather(query.data);
+  }, [query.data]);
 
+  const error =
+    geolocationError ??
+    (query.error instanceof Error ? query.error.message : null);
+
+  return {
+    weather: query.data ?? weather,
+    loading: query.isLoading,
+    error,
+    request,
+  };
+}

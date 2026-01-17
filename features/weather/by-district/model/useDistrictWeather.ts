@@ -1,56 +1,56 @@
-'use client';
+"use client";
 
-import { geocodeDistrict } from '@/entities/district/api/geocodeDistrict';
-import type { DistrictEntry } from '@/entities/district/lib/koreaDistricts';
-import { getWeatherByCoords } from '@/entities/weather/api/getWeatherByCoords';
-import type { WeatherOkResponse } from '@/entities/weather/model/types';
-import { useEffect, useState } from 'react';
+import { geocodeDistrict } from "@/entities/district/api/geocodeDistrict";
+import type { DistrictEntry } from "@/entities/district/lib/koreaDistricts";
+import { getWeatherByCoords } from "@/entities/weather/api/getWeatherByCoords";
+import {
+  weatherQueryRefetchIntervalMs,
+  weatherQueryStaleTimeMs,
+} from "@/entities/weather/api/queryOptions";
+import type { WeatherOkResponse } from "@/entities/weather/model/types";
+import { useQuery } from "@tanstack/react-query";
 
 export function useDistrictWeather(selected: DistrictEntry | null) {
-  const [weather, setWeather] = useState<WeatherOkResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const geocodeQuery = useQuery({
+    queryKey: selected
+      ? ["geocode", "district", selected.raw]
+      : ["geocode", "district", "none"],
+    queryFn: async () => {
+      if (!selected) throw new Error("district not selected");
+      return geocodeDistrict(selected);
+    },
+    enabled: !!selected,
+    staleTime: 1000 * 60 * 60 * 24 * 30,
+    gcTime: 1000 * 60 * 60 * 24 * 30,
+    retry: 1,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
+  const coords = geocodeQuery.data ?? null;
 
-    async function run(entry: DistrictEntry) {
-      try {
-        setError(null);
-        setLoading(true);
-        setWeather(null);
+  const weatherQuery = useQuery<WeatherOkResponse>({
+    queryKey: coords
+      ? ["weather", "district", coords.lat, coords.lon]
+      : ["weather", "district", "none"],
+    queryFn: async () => {
+      if (!coords) throw new Error("coords not ready");
+      return getWeatherByCoords(coords);
+    },
+    enabled: !!coords,
+    staleTime: weatherQueryStaleTimeMs,
+    refetchInterval: weatherQueryRefetchIntervalMs,
+    refetchIntervalInBackground: true,
+    gcTime: 1000 * 60 * 60 * 2,
+    retry: 1,
+  });
 
-        const coords = await geocodeDistrict(entry);
-        const result = await getWeatherByCoords(coords);
-        if (cancelled) return;
-        setWeather(result);
-      } catch (fetchError) {
-        if (cancelled) return;
-        setWeather(null);
-        setError(
-          fetchError instanceof Error
-            ? fetchError.message
-            : '선택한 장소의 날씨를 불러오지 못했습니다.'
-        );
-      } finally {
-        if (cancelled) return;
-        setLoading(false);
-      }
-    }
+  const loading = geocodeQuery.isFetching || weatherQuery.isFetching;
+  const error =
+    (geocodeQuery.error instanceof Error ? geocodeQuery.error.message : null) ??
+    (weatherQuery.error instanceof Error ? weatherQuery.error.message : null);
 
-    if (selected) {
-      void run(selected);
-    } else {
-      setWeather(null);
-      setError(null);
-      setLoading(false);
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selected]);
-
-  return { weather, loading, error };
+  return {
+    weather: weatherQuery.data ?? null,
+    loading,
+    error,
+  };
 }
-
