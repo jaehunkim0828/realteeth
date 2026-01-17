@@ -3,7 +3,7 @@
 import type { FavoritePlace } from '@/entities/favorite/model/types';
 import type { DistrictEntry } from '@/entities/district/lib/koreaDistricts';
 import { geocodeDistrict } from '@/entities/district/api/geocodeDistrict';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const STORAGE_KEY = 'realteeth:favorites:v1';
 const MAX_FAVORITES = 6;
@@ -38,12 +38,15 @@ function save(list: FavoritePlace[]) {
 
 export function useFavorites() {
   const [items, setItems] = useState<FavoritePlace[]>([]);
+  const hydratedRef = useRef(false);
 
   useEffect(() => {
     setItems(safeParse(localStorage.getItem(STORAGE_KEY)));
+    hydratedRef.current = true;
   }, []);
 
   useEffect(() => {
+    if (!hydratedRef.current) return;
     save(items);
   }, [items]);
 
@@ -112,4 +115,3 @@ export function useFavorites() {
     updateAlias,
   };
 }
-
