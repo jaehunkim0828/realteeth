@@ -16,6 +16,8 @@ export type WeatherOkResponse = {
   };
   base: { date: string; time: string };
   now: WeatherNowcast;
+  today: { minC: number | null; maxC: number | null };
+  hourly: Array<{ time: string; temperatureC: number }>;
 };
 
 export type WeatherErrorResponse = {
@@ -51,4 +53,3 @@ export function hasAnyNowcast(now: WeatherNowcast) {
     now.precipitationType != null
   );
 }
-
