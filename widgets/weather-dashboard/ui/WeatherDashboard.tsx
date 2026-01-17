@@ -3,6 +3,8 @@
 import type { DistrictEntry } from '@/entities/district/lib/koreaDistricts';
 import { formatPrecipitationType } from '@/entities/weather/model/types';
 import { DistrictSearch } from '@/features/district-search/ui/DistrictSearch';
+import { useFavorites } from '@/features/favorites/model/useFavorites';
+import { FavoriteList } from '@/features/favorites/ui/FavoriteList';
 import { useDistrictWeather } from '@/features/weather/by-district/model/useDistrictWeather';
 import { useCurrentLocationWeather } from '@/features/weather/current-location/model/useCurrentLocationWeather';
 import { LocationPinIcon, StarIcon } from '@/shared/ui/icon';
@@ -53,6 +55,7 @@ export function WeatherDashboard() {
 
   const current = useCurrentLocationWeather();
   const selected = useDistrictWeather(selectedDistrict);
+  const favorites = useFavorites();
 
   return (
     <main className='py-10'>
@@ -201,15 +204,40 @@ export function WeatherDashboard() {
                 <StarIcon className='h-4 w-4 text-slate-600' />
                 즐겨찾기
               </div>
-              <span className='text-xs font-medium text-slate-500'>0 / 6</span>
+              <span className='text-xs font-medium text-slate-500'>
+                {favorites.count} / 6
+              </span>
             </div>
 
             <p className='mt-2 text-sm text-slate-600'>
               검색한 장소를 즐겨찾기에 추가하면 빠르게 확인할 수 있어요.
             </p>
 
-            <div className='mt-4 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center text-sm text-slate-600'>
-              아직 즐겨찾기가 없습니다.
+            <div className='mt-4'>
+              <button
+                type='button'
+                disabled={!selectedDistrict || !favorites.canAdd || favorites.isFavorite(selectedDistrict)}
+                onClick={async () => {
+                  if (!selectedDistrict) return;
+                  try {
+                    await favorites.addFromDistrict(selectedDistrict);
+                  } catch (error) {
+                    alert(error instanceof Error ? error.message : '추가할 수 없습니다.');
+                  }
+                }}
+                className='w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300'
+              >
+                선택한 장소 즐겨찾기 추가
+              </button>
+
+              <div className='mt-3'>
+                <FavoriteList
+                  items={favorites.items}
+                  max={6}
+                  onRemove={favorites.remove}
+                  onUpdateAlias={favorites.updateAlias}
+                />
+              </div>
             </div>
           </div>
         </aside>
