@@ -52,6 +52,9 @@ function HourlyTemperatureRow({
 export function WeatherDashboard() {
   const [selectedDistrict, setSelectedDistrict] =
     useState<DistrictEntry | null>(null);
+  const [favoriteActionError, setFavoriteActionError] = useState<string | null>(
+    null
+  );
 
   const current = useCurrentLocationWeather();
   const selected = useDistrictWeather(selectedDistrict);
@@ -97,13 +100,50 @@ export function WeatherDashboard() {
                 <p className='text-sm text-rose-600'>{selected.error}</p>
               ) : selected.weather ? (
                 <div>
+                  <div className='mb-3 flex items-center justify-between gap-3'>
+                    <div className='text-xs font-semibold tracking-wide text-slate-500'>
+                      즐겨찾기에 저장
+                    </div>
+                    <button
+                      type='button'
+                      disabled={
+                        !selectedDistrict ||
+                        !favorites.canAdd ||
+                        favorites.isFavorite(selectedDistrict)
+                      }
+                      onClick={async () => {
+                        if (!selectedDistrict) return;
+                        try {
+                          setFavoriteActionError(null);
+                          await favorites.addFromDistrict(selectedDistrict);
+                        } catch (error) {
+                          setFavoriteActionError(
+                            error instanceof Error
+                              ? error.message
+                              : '추가할 수 없습니다.'
+                          );
+                        }
+                      }}
+                      className='inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300'
+                    >
+                      <StarIcon className='h-4 w-4 text-white' />
+                      즐겨찾기 추가
+                    </button>
+                  </div>
+
+                  {favoriteActionError ? (
+                    <p className='mb-3 text-sm text-rose-600'>
+                      {favoriteActionError}
+                    </p>
+                  ) : null}
+
                   <div className='grid gap-4 sm:grid-cols-2'>
                     <div>
                       <div className='text-4xl font-semibold tracking-tight text-slate-900'>
                         {selected.weather.now.temperatureC ?? '-'}°
                       </div>
                       <div className='mt-1 text-sm text-slate-600'>
-                        최저 {selected.weather.today.minC ?? '-'}° · 최고{' '}
+                        최저 {selected.weather.today.minC ?? '-'}° · 최고
                         {selected.weather.today.maxC ?? '-'}°
                       </div>
                       <div className='mt-1 text-sm text-slate-600'>
@@ -114,10 +154,10 @@ export function WeatherDashboard() {
 
                     <div className='text-sm text-slate-700'>
                       <div>
-                        강수{' '}
+                        강수
                         {formatPrecipitationType(
                           selected.weather.now.precipitationType
-                        )}{' '}
+                        )}
                         · 1시간 {selected.weather.now.precipitation1h ?? '-'}mm
                       </div>
                       <div className='mt-1 text-xs text-slate-500'>
@@ -126,7 +166,6 @@ export function WeatherDashboard() {
                       </div>
                     </div>
                   </div>
-
                   <HourlyTemperatureRow hourly={selected.weather.hourly} />
                 </div>
               ) : (
@@ -163,7 +202,7 @@ export function WeatherDashboard() {
                         {current.weather.now.temperatureC ?? '-'}°
                       </div>
                       <div className='mt-1 text-sm text-slate-600'>
-                        최저 {current.weather.today.minC ?? '-'}° · 최고{' '}
+                        최저 {current.weather.today.minC ?? '-'}° · 최고
                         {current.weather.today.maxC ?? '-'}°
                       </div>
                       <div className='mt-1 text-sm text-slate-600'>
@@ -174,14 +213,15 @@ export function WeatherDashboard() {
 
                     <div className='text-sm text-slate-700'>
                       <div>
-                        강수{' '}
+                        강수
                         {formatPrecipitationType(
                           current.weather.now.precipitationType
-                        )}{' '}
+                        )}
                         · 1시간 {current.weather.now.precipitation1h ?? '-'}mm
                       </div>
                       <div className='mt-1 text-xs text-slate-500'>
-                        기준 {current.weather.base.date}.{current.weather.base.time}
+                        기준 {current.weather.base.date}.
+                        {current.weather.base.time}
                       </div>
                     </div>
                   </div>
@@ -214,22 +254,6 @@ export function WeatherDashboard() {
             </p>
 
             <div className='mt-4'>
-              <button
-                type='button'
-                disabled={!selectedDistrict || !favorites.canAdd || favorites.isFavorite(selectedDistrict)}
-                onClick={async () => {
-                  if (!selectedDistrict) return;
-                  try {
-                    await favorites.addFromDistrict(selectedDistrict);
-                  } catch (error) {
-                    alert(error instanceof Error ? error.message : '추가할 수 없습니다.');
-                  }
-                }}
-                className='w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300'
-              >
-                선택한 장소 즐겨찾기 추가
-              </button>
-
               <div className='mt-3'>
                 <FavoriteList
                   items={favorites.items}
